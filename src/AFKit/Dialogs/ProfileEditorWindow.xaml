@@ -1,0 +1,65 @@
+﻿<Window x:Class="AFKit.Dialogs.ProfileEditorWindow"
+        FontFamily="{StaticResource Ui}"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:AFKit.Services"
+        Title="{loc:T Prof.Title}" Width="520" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False"
+        Background="{StaticResource Panel}" Foreground="{StaticResource Fg}">
+  <StackPanel Margin="22">
+    <!-- Preview + name -->
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="90"/>
+      </Grid.ColumnDefinitions>
+      <Grid Width="48" Height="48" VerticalAlignment="Bottom" Margin="0,0,14,0">
+        <Ellipse x:Name="PreviewCircle" Fill="#5B8DEF"/>
+        <TextBlock x:Name="PreviewGlyph" Foreground="White" FontSize="18" FontWeight="SemiBold"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+      </Grid>
+      <StackPanel Grid.Column="1">
+        <Label Content="{loc:T Prof.Name}"/>
+        <TextBox x:Name="NameBox" TextChanged="OnPreviewChanged"/>
+      </StackPanel>
+      <StackPanel Grid.Column="2" Margin="10,0,0,0">
+        <Label Content="{loc:T Prof.Icon}" ToolTip="{loc:T Prof.IconTip}"/>
+        <TextBox x:Name="IconBox" MaxLength="4" TextChanged="OnPreviewChanged" HorizontalContentAlignment="Center"/>
+      </StackPanel>
+    </Grid>
+
+    <Label Content="{loc:T Dlg.Color}"/>
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="90"/>
+      </Grid.ColumnDefinitions>
+      <ItemsControl x:Name="Swatches" VerticalAlignment="Center">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Ellipse Width="22" Height="22" Margin="0,0,7,0" Fill="{Binding}" Cursor="Hand"
+                     MouseLeftButtonDown="OnSwatchClicked" ToolTip="{Binding}"/>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <TextBox x:Name="ColorBox" Grid.Column="1" Margin="10,0,0,0" TextChanged="OnPreviewChanged"/>
+    </Grid>
+
+    <Label Content="{loc:T Prof.Group}"/>
+    <ComboBox x:Name="GroupBox" DisplayMemberPath="Name"/>
+
+    <Label Content="{loc:T Prof.StartPage}"/>
+    <TextBox x:Name="StartUrlBox"/>
+
+    <TextBlock x:Name="ErrorText" Foreground="{StaticResource Danger}" TextWrapping="Wrap" Margin="0,12,0,0" Visibility="Collapsed"/>
+
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+      <Button Content="{loc:T Dlg.Cancel}" Style="{StaticResource TextButton}" IsCancel="True" Margin="0,0,8,0"/>
+      <Button Content="{loc:T Dlg.Save}" Style="{StaticResource PrimaryButton}" IsDefault="True" Click="OnSave"/>
+    </StackPanel>
+  </StackPanel>
+</Window>

@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>AFKit</AssemblyName>
+    <RootNamespace>AFKit</RootNamespace>
+    <ApplicationTitle>AFKit</ApplicationTitle>
+    <Version>2.0.0</Version>
+    <ApplicationIcon>Assets\afkit.ico</ApplicationIcon>
+    <!-- WinForms só para o ícone da bandeja (NotifyIcon) -->
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <!-- Projetos WPF não incluem System.IO nos usings implícitos (conflito com System.Windows.Shapes.Path). -->
+  <ItemGroup>
+    <Using Include="System.IO" />
+    <!-- Evita conflitos de nomes WPF x WinForms (MessageBox, Application, Button, Color…) -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\afkit.ico" />
+    <!-- V2: fonte pixelada das células de batalha (Press Start 2P, licença OFL em Assets\Fonts) -->
+    <Resource Include="Assets\Fonts\*.ttf" />
+    <!-- V2: script que lê o Pokémon em campo e o inimigo no pokeidle.io (injetado nas abas) -->
+    <EmbeddedResource Include="Assets\taskbar-probe.js" LogicalName="AFKit.TaskbarProbe.js" />
+    <EmbeddedResource Include="Assets\grid-overlay.js" LogicalName="AFKit.GridOverlay.js" />
+    <EmbeddedResource Include="Assets\live-state.js" LogicalName="AFKit.LiveState.js" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+  </ItemGroup>
+
+</Project>

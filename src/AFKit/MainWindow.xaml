@@ -1,0 +1,254 @@
+<Window x:Class="AFKit.MainWindow"
+        FontFamily="{StaticResource Ui}"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:AFKit.Services"
+        Title="AFKit" Icon="pack://application:,,,/Assets/afkit.ico" Width="1320" Height="840" MinWidth="820" MinHeight="500"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource Bg}" Foreground="{StaticResource Fg}"
+        Loaded="OnLoaded" Closing="OnClosing" PreviewKeyDown="OnWindowKeyDown">
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition x:Name="SidebarColumn" Width="250"/>
+      <ColumnDefinition Width="*"/>
+    </Grid.ColumnDefinitions>
+
+    <!-- ===================== Sidebar =====================
+         The ☰ button (or Ctrl+B) collapses it into an icon strip (SidebarCompact) or opens it again.
+         WebView2 always draws on top of WPF, so the sidebar pushes the page (it changes the column width). -->
+    <Border x:Name="Sidebar" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0"
+            ClipToBounds="True">
+      <DockPanel>
+        <!-- Two rows: the title never competes with the action buttons for the same space. -->
+        <Grid DockPanel.Dock="Top" Margin="13,12,8,8">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center" MinHeight="30">
+            <!-- ☰ show / hide the menu (Ctrl+B). Also visible in the collapsed strip. -->
+            <Button x:Name="SidebarToggleButton" Style="{StaticResource IconButton}" Content="&#xE700;" FontSize="14"
+                    Click="OnSidebarToggleClicked" ToolTip="{loc:T Main.HideMenu}"/>
+            <TextBlock x:Name="SidebarTitle" Text="AFKit" FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource Fg}"
+                       VerticalAlignment="Center" Margin="6,0,0,0"/>
+          </StackPanel>
+          <StackPanel x:Name="SidebarHeaderButtons" Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,4,0,0">
+            <Button x:Name="GridToggle" Style="{StaticResource IconButton}" Content="&#xE8A9;" ToolTip="{loc:T Main.GridEnter}" Click="OnGridToggleClicked"/>
+            <Button x:Name="MuteAllButton" Style="{StaticResource IconButton}" Content="&#xE767;" ToolTip="{loc:T Main.MuteAll}" Click="OnMuteAllClicked"/>
+            <Button Style="{StaticResource IconButton}" Content="&#xE774;" ToolTip="{loc:T Main.Language}" Click="OnLanguageButtonClicked"/>
+            <Button Style="{StaticResource IconButton}" Content="&#xE8B5;" ToolTip="{loc:T Main.ImportTooltip}" Click="OnImportClicked"/>
+            <Button Style="{StaticResource IconButton}" Content="&#xE8F4;" ToolTip="{loc:T Main.NewGroup}" Click="OnNewGroupClicked"/>
+            <Button Style="{StaticResource IconButton}" Content="&#xE710;" ToolTip="{loc:T Main.NewProfile}" Click="OnNewProfileClicked"/>
+          </StackPanel>
+        </Grid>
+
+        <Grid DockPanel.Dock="Top">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+          <TextBox x:Name="SearchBox" Grid.ColumnSpan="2" Margin="12,0,12,10" TextChanged="OnSearchChanged"
+                   Tag="{loc:T Main.SearchProfiles}"/>
+        </Grid>
+
+        <Border x:Name="SidebarFooter" DockPanel.Dock="Bottom" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="14,9">
+          <TextBlock x:Name="FooterText" FontSize="11" Foreground="{StaticResource FgDim}" TextTrimming="CharacterEllipsis"/>
+        </Border>
+
+        <ScrollViewer x:Name="SidebarScroll" VerticalScrollBarVisibility="Auto">
+          <ItemsControl x:Name="Sections" Margin="6,0,6,10" MouseMove="OnSidebarMouseMove">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Margin="0,4,0,2">
+                  <!-- Group header -->
+                  <Border x:Name="header" Padding="8,5" CornerRadius="5" Background="Transparent" Cursor="Hand"
+                          BorderBrush="{StaticResource Accent}" BorderThickness="0"
+                          MouseLeftButtonDown="OnSectionHeaderClicked"
+                          ToolTip="{Binding Title}" ToolTipService.IsEnabled="False"
+                          AllowDrop="True" DragOver="OnHeaderDragOver" DragLeave="OnDropTargetLeave" Drop="OnHeaderDrop">
+                    <Border.ContextMenu>
+                      <ContextMenu>
+                        <MenuItem Header="{loc:T Main.NewProfileInGroup}" Click="OnNewProfileInGroupClicked"/>
+                        <MenuItem Header="{loc:T Main.EditGroup}" Click="OnEditGroupClicked" IsEnabled="{Binding IsRealGroup}"/>
+                        <MenuItem Header="{loc:T Main.DeleteGroup}" Click="OnDeleteGroupClicked" IsEnabled="{Binding IsRealGroup}"/>
+                      </ContextMenu>
+                    </Border.ContextMenu>
+                    <Grid>
+                    <StackPanel x:Name="headerContent" Orientation="Horizontal">
+                      <TextBlock x:Name="chevron" Text="&#xE70D;" FontFamily="{StaticResource Glyphs}" FontSize="9"
+                                 Foreground="{StaticResource FgDim}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                      <Ellipse Width="8" Height="8" Fill="{Binding Color}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                      <TextBlock Text="{Binding Title}" Foreground="{StaticResource FgDim}" FontSize="11" FontWeight="SemiBold"/>
+                      <TextBlock Text="{Binding CountText}" Foreground="{StaticResource FgDim}" FontSize="11" Margin="6,0,0,0" Opacity="0.6"/>
+                    </StackPanel>
+                    <!-- collapsed strip: the group becomes a thin line in its color -->
+                    <Border x:Name="railLine" Height="2" CornerRadius="1" Margin="2,0" VerticalAlignment="Center"
+                            Background="{Binding Color}" Visibility="Collapsed"/>
+                    </Grid>
+                  </Border>
+
+                  <!-- Profiles -->
+                  <ItemsControl x:Name="items" ItemsSource="{Binding Profiles}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border x:Name="row" Padding="8,6" Margin="0,1" CornerRadius="6" Background="Transparent"
+                                BorderBrush="{StaticResource Accent}" BorderThickness="0" Cursor="Hand"
+                                PreviewMouseLeftButtonDown="OnProfileMouseDown" MouseLeftButtonUp="OnProfileMouseUp"
+                                AllowDrop="True" DragOver="OnRowDragOver" DragLeave="OnDropTargetLeave" Drop="OnRowDrop"
+                                ToolTipService.IsEnabled="False">
+                          <!-- tooltip only in the collapsed strip (name + usage) -->
+                          <Border.ToolTip>
+                            <StackPanel>
+                              <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                              <TextBlock Text="{Binding UsageText}" FontSize="11" Foreground="{StaticResource FgDim}" Margin="0,2,0,0">
+                                <TextBlock.Style>
+                                  <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                      <Trigger Property="Text" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                      </Trigger>
+                                    </Style.Triggers>
+                                  </Style>
+                                </TextBlock.Style>
+                              </TextBlock>
+                            </StackPanel>
+                          </Border.ToolTip>
+                          <Border.ContextMenu>
+                            <ContextMenu>
+                              <MenuItem Header="{loc:T Main.MenuOpen}" Click="OnOpenProfileMenu"/>
+                              <MenuItem Header="{loc:T Main.MenuEdit}" Click="OnEditProfileMenu"/>
+                              <MenuItem Header="{loc:T Main.MenuExtensions}" Click="OnExtensionsMenu"/>
+                              <MenuItem Header="{loc:T Main.MenuPinnedToGrid}" Click="OnTogglePinMenu" IsChecked="{Binding IsPinned, Mode=OneWay}"/>
+                              <MenuItem Header="{loc:T Main.MenuShowInTaskbar}" Click="OnToggleTaskbarMenu"
+                                        IsChecked="{Binding ShowInTaskbar, Mode=OneWay}"/>
+                              <MenuItem Header="{loc:T Main.MenuMuteProfile}" Click="OnToggleProfileMuteMenu"
+                                        IsChecked="{Binding IsMuted, Mode=OneWay}" InputGestureText="Ctrl+Shift+M"/>
+                              <MenuItem Header="{loc:T Main.MenuCloseSession}" Click="OnCloseSessionMenu" IsEnabled="{Binding IsLoaded}"/>
+                              <Separator/>
+                              <MenuItem Header="{loc:T Main.MenuMoveUp}" Click="OnMoveUpMenu"/>
+                              <MenuItem Header="{loc:T Main.MenuMoveDown}" Click="OnMoveDownMenu"/>
+                              <Separator/>
+                              <MenuItem Header="{loc:T Main.MenuExportBackup}" Click="OnExportProfileMenu"/>
+                              <MenuItem Header="{loc:T Main.MenuOpenDataFolder}" Click="OnOpenDataFolderMenu"/>
+                              <Separator/>
+                              <MenuItem Header="{loc:T Main.MenuDeleteProfile}" Click="OnDeleteProfileMenu"/>
+                            </ContextMenu>
+                          </Border.ContextMenu>
+                          <Grid>
+                            <Grid.ColumnDefinitions>
+                              <ColumnDefinition Width="Auto"/>
+                              <ColumnDefinition Width="*"/>
+                              <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <!-- highlight bar of the active profile -->
+                            <Border x:Name="activeBar" Width="3" CornerRadius="2" HorizontalAlignment="Left"
+                                    Margin="-8,4,0,4" Background="{StaticResource Accent}" Visibility="Collapsed"/>
+                            <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource ProfileAvatar}"/>
+                            <!-- collapsed strip: green dot for an open session over the avatar -->
+                            <Ellipse x:Name="railDot" Width="9" Height="9" Fill="#3FB97A" Stroke="{StaticResource Panel}"
+                                     StrokeThickness="1.5" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                     Margin="0,0,-2,-1" Visibility="Collapsed" IsHitTestVisible="False"/>
+                            <StackPanel x:Name="textCol" Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                              <TextBlock Text="{Binding Name}" FontSize="13" Foreground="{StaticResource Fg}"
+                                         TextTrimming="CharacterEllipsis"/>
+                              <TextBlock x:Name="usage" Text="{Binding UsageText}" FontSize="10.5"
+                                         Foreground="{StaticResource FgDim}" Visibility="Collapsed"
+                                         ToolTip="{loc:T Main.UsageTooltip}"/>
+                            </StackPanel>
+                            <StackPanel x:Name="indicators" Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                              <TextBlock x:Name="mute" Text="&#xE74F;" FontFamily="{StaticResource Glyphs}" FontSize="11"
+                                         Foreground="{StaticResource Danger}" Margin="6,0,0,0" VerticalAlignment="Center"
+                                         Visibility="Collapsed" ToolTip="{loc:T Main.ProfileMutedTooltip}"/>
+                              <TextBlock x:Name="pin" Text="&#xE718;" FontFamily="{StaticResource Glyphs}" FontSize="11"
+                                         Foreground="{StaticResource FgDim}" Margin="6,0,0,0" VerticalAlignment="Center"
+                                         Visibility="Collapsed" ToolTip="{loc:T Main.MenuPinnedToGrid}"/>
+                              <Ellipse x:Name="dot" Width="7" Height="7" Fill="#3FB97A" Margin="6,0,2,0"
+                                       Visibility="Collapsed" ToolTip="{loc:T Main.SessionOpenTooltip}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                          </Grid>
+                        </Border>
+                        <DataTemplate.Triggers>
+                          <DataTrigger Binding="{Binding IsLoaded}" Value="True">
+                            <Setter TargetName="dot" Property="Visibility" Value="Visible"/>
+                            <Setter TargetName="usage" Property="Visibility" Value="Visible"/>
+                          </DataTrigger>
+                          <DataTrigger Binding="{Binding IsHeavy}" Value="True">
+                            <Setter TargetName="usage" Property="Foreground" Value="#F08C2E"/>
+                          </DataTrigger>
+                          <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                            <Setter TargetName="pin" Property="Visibility" Value="Visible"/>
+                          </DataTrigger>
+                          <DataTrigger Binding="{Binding IsMuted}" Value="True">
+                            <Setter TargetName="mute" Property="Visibility" Value="Visible"/>
+                          </DataTrigger>
+                          <Trigger SourceName="row" Property="IsMouseOver" Value="True">
+                            <Setter TargetName="row" Property="Background" Value="{StaticResource Bg}"/>
+                          </Trigger>
+                          <DataTrigger Binding="{Binding IsActive}" Value="True">
+                            <Setter TargetName="row" Property="Background" Value="{StaticResource PanelHi}"/>
+                            <Setter TargetName="activeBar" Property="Visibility" Value="Visible"/>
+                          </DataTrigger>
+                          <!-- collapsed strip: only the avatar (and the indicators over it) -->
+                          <DataTrigger Binding="{Binding SidebarCompact, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                            <Setter TargetName="textCol" Property="Visibility" Value="Collapsed"/>
+                            <Setter TargetName="indicators" Property="Visibility" Value="Collapsed"/>
+                            <Setter TargetName="row" Property="Padding" Value="8,6,4,6"/>
+                            <Setter TargetName="row" Property="ToolTipService.IsEnabled" Value="True"/>
+                          </DataTrigger>
+                          <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                              <Condition Binding="{Binding SidebarCompact, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True"/>
+                              <Condition Binding="{Binding IsLoaded}" Value="True"/>
+                            </MultiDataTrigger.Conditions>
+                            <Setter TargetName="railDot" Property="Visibility" Value="Visible"/>
+                          </MultiDataTrigger>
+                        </DataTemplate.Triggers>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+                <DataTemplate.Triggers>
+                  <DataTrigger Binding="{Binding IsExpanded}" Value="False">
+                    <Setter TargetName="items" Property="Visibility" Value="Collapsed"/>
+                    <Setter TargetName="chevron" Property="Text" Value="&#xE76C;"/>
+                  </DataTrigger>
+                  <Trigger SourceName="header" Property="IsMouseOver" Value="True">
+                    <Setter TargetName="header" Property="Background" Value="{StaticResource Bg}"/>
+                  </Trigger>
+                  <DataTrigger Binding="{Binding SidebarCompact, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                    <Setter TargetName="headerContent" Property="Visibility" Value="Hidden"/>
+                    <Setter TargetName="railLine" Property="Visibility" Value="Visible"/>
+                    <Setter TargetName="header" Property="ToolTipService.IsEnabled" Value="True"/>
+                  </DataTrigger>
+                </DataTemplate.Triggers>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
+    <!-- ===================== Main area ===================== -->
+    <Grid Grid.Column="1" x:Name="ContentHost"/>
+
+    <StackPanel Grid.Column="1" x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <TextBlock Text="&#xE774;" FontFamily="{StaticResource Glyphs}" FontSize="44" Foreground="{StaticResource FgDim}"
+                 HorizontalAlignment="Center"/>
+      <TextBlock x:Name="EmptyTitle" Text="{loc:T Main.EmptyNone}" FontSize="18" Foreground="{StaticResource Fg}"
+                 HorizontalAlignment="Center" Margin="0,16,0,6"/>
+      <TextBlock x:Name="EmptyHint" Text="{loc:T Main.EmptyPickHint}" Foreground="{StaticResource FgDim}"
+                 HorizontalAlignment="Center"/>
+      <Button x:Name="EmptyCreateButton" Content="{loc:T Main.CreateProfile}" Style="{StaticResource PrimaryButton}"
+              HorizontalAlignment="Center" Margin="0,18,0,0" Click="OnNewProfileClicked"/>
+    </StackPanel>
+
+    <!-- Overlay for long operations (export/import) -->
+    <Border Grid.ColumnSpan="2" x:Name="BusyOverlay" Background="#CC16171B" Visibility="Collapsed">
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock x:Name="BusyTitle" FontSize="16" Foreground="{StaticResource Fg}" HorizontalAlignment="Center"/>
+        <TextBlock x:Name="BusyDetail" FontSize="11" Foreground="{StaticResource FgDim}" HorizontalAlignment="Center"
+                   Margin="0,8,0,0" MaxWidth="500" TextTrimming="CharacterEllipsis"/>
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

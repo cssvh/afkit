@@ -1,0 +1,314 @@
+<UserControl x:Class="AFKit.Controls.ProfileView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:AFKit.Services"
+             FontFamily="{StaticResource Ui}"
+             Background="{StaticResource Bg}"
+             PreviewKeyDown="OnPreviewKeyDown"
+             PreviewMouseDown="OnAnyMouseDown"
+             IsKeyboardFocusWithinChanged="OnFocusWithinChanged">
+  <!-- Frame: only shows in grid mode (highlights the focused cell) -->
+  <Border x:Name="Frame" BorderThickness="0" BorderBrush="{StaticResource Line}">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>  <!-- grid header -->
+      <RowDefinition Height="Auto"/>  <!-- tabs -->
+      <RowDefinition Height="Auto"/>  <!-- navigation -->
+      <RowDefinition Height="*"/>     <!-- pages -->
+    </Grid.RowDefinitions>
+
+    <!-- ===== Grid mode header (card): ● Name  status · time ……  memory  − 100% +  🔊 ⟳ ⤢ 📌 ===== -->
+    <Border x:Name="GridHeader" Grid.Row="0" Height="36" Background="{StaticResource Panel}" Visibility="Collapsed"
+            CornerRadius="9,9,0,0" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+      <Grid Margin="12,0,6,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- status: green = all good · orange = recovering · gray = loading -->
+        <Ellipse x:Name="HeaderDot" Width="8" Height="8" Fill="#3FB97A" VerticalAlignment="Center"/>
+        <TextBlock x:Name="HeaderName" Grid.Column="1" Foreground="{StaticResource Fg}" FontSize="12.5" FontWeight="SemiBold"
+                   Margin="8,0,0,0" VerticalAlignment="Center" MaxWidth="150" TextTrimming="CharacterEllipsis"/>
+        <DockPanel Grid.Column="2" Margin="8,0,8,0" LastChildFill="True">
+          <TextBlock x:Name="HeaderReload" DockPanel.Dock="Right" Text="&#xE895;" FontFamily="{StaticResource Glyphs}"
+                     FontSize="10" Foreground="{StaticResource FgDim}" VerticalAlignment="Center" Margin="6,0,0,0"
+                     Visibility="Collapsed"/>
+          <TextBlock x:Name="HeaderTab" Foreground="{StaticResource FgDim}" FontSize="11.5"
+                     VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+        </DockPanel>
+
+        <TextBlock x:Name="HeaderUsage" Grid.Column="3" Foreground="{StaticResource FgDim}" FontSize="11"
+                   VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+        <!-- page zoom of this cell -->
+        <Border Grid.Column="4" Background="{StaticResource Bg}" CornerRadius="6" Height="24" Margin="0,0,6,0"
+                VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal">
+            <Button Style="{StaticResource IconButton}" Width="22" Height="22" FontSize="10" Content="&#xE738;"
+                    ToolTip="{loc:T PV.ZoomOut}" Click="OnZoomOutClicked"/>
+            <Button x:Name="ZoomLabel" Style="{StaticResource IconButton}" Width="40" Height="22"
+                    FontFamily="{StaticResource Ui}" FontSize="11" Content="100%"
+                    ToolTip="{loc:T PV.ZoomReset}" Click="OnZoomResetClicked"/>
+            <Button Style="{StaticResource IconButton}" Width="22" Height="22" FontSize="10" Content="&#xE710;"
+                    ToolTip="{loc:T PV.ZoomIn}" Click="OnZoomInClicked"/>
+          </StackPanel>
+        </Border>
+
+        <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center">
+          <!-- V2: PokeIdle only — turns the game's Economy Mode (no scene, just the numbers) on/off in this cell -->
+          <Button x:Name="HeaderEconomyButton" Style="{StaticResource IconButton}" Width="26" Height="26" FontSize="11"
+                  Content="&#xE83F;" ToolTip="{loc:T PV.EconomyOn}" Visibility="Collapsed" Click="OnHeaderEconomyClicked"/>
+          <Button x:Name="HeaderMuteButton" Style="{StaticResource IconButton}" Width="26" Height="26" FontSize="11"
+                  Content="&#xE767;" ToolTip="{loc:T PV.MuteTip}" Click="OnHeaderMuteClicked"/>
+          <Button Style="{StaticResource IconButton}" Width="26" Height="26" FontSize="11" Content="&#xE72C;"
+                  ToolTip="{loc:T PV.Reload}" Click="OnReloadClicked"/>
+          <Button Style="{StaticResource IconButton}" Width="26" Height="26" FontSize="11" Content="&#xE740;"
+                  ToolTip="{loc:T PV.OpenFull}" Click="OnMaximizeClicked"/>
+          <Button Style="{StaticResource IconButton}" Width="26" Height="26" FontSize="11" Content="&#xE77A;"
+                  ToolTip="{loc:T Tab.MenuUnpin}" Click="OnUnpinClicked"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- ===== Tabs =====
+         The selected tab has the same color as the navigation bar and "touches" it (browser-tab effect),
+         with a highlight line on top. The others stay discreet, separated by a thin vertical line. -->
+    <Grid x:Name="TabsRow" Grid.Row="1" Height="40" Background="{StaticResource Panel}">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+      <!-- thin line under the tabs (the selected tab covers that stretch) -->
+      <Border Grid.ColumnSpan="2" VerticalAlignment="Bottom" Height="1" Background="{StaticResource Line}"/>
+      <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
+                    PreviewMouseWheel="OnTabsMouseWheel" x:Name="TabsScroll">
+        <ItemsControl x:Name="TabStrip" Margin="8,6,0,0" MouseMove="OnTabStripMouseMove"
+                      MouseLeftButtonUp="OnTabStripMouseUp" LostMouseCapture="OnTabStripLostMouseCapture">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Grid x:Name="slot" Width="220" Height="34">
+                <Border x:Name="tab" Margin="0,0,2,0" CornerRadius="8,8,0,0" Background="Transparent"
+                        BorderBrush="Transparent" BorderThickness="1,1,1,0" Cursor="Hand" ToolTip="{Binding Url}"
+                        MouseLeftButtonDown="OnTabClicked" MouseDown="OnTabMouseDown"
+                        PreviewMouseLeftButtonDown="OnTabPressed">
+                <Border.ContextMenu>
+                  <ContextMenu Opened="OnTabMenuOpened">
+                    <MenuItem Header="{loc:T Tab.MenuMute}" Click="OnToggleMuteMenu" IsChecked="{Binding IsMuted, Mode=OneWay}"
+                              InputGestureText="Ctrl+M"/>
+                    <Separator/>
+                    <MenuItem Header="{loc:T Tab.MenuPin}" Click="OnPinTabMenu"/>
+                    <MenuItem Header="{loc:T Tab.MenuUnpin}" Click="OnUnpinTabMenu" IsEnabled="{Binding IsPinned}"/>
+                    <Separator/>
+                    <MenuItem Header="{loc:T Tab.MenuBackground}">
+                      <MenuItem Header="{loc:T Tab.ModeLight}" Tag="mode:Light" Click="OnBackgroundModeMenu"
+                                ToolTip="{loc:T Tab.ModeLightTip}"/>
+                      <MenuItem Header="{loc:T Tab.ModeActive}" Tag="mode:Active" Click="OnBackgroundModeMenu"
+                                ToolTip="{loc:T Tab.ModeActiveTip}"/>
+                      <MenuItem Header="{loc:T Tab.ModeSuspended}" Tag="mode:Suspended" Click="OnBackgroundModeMenu"
+                                ToolTip="{loc:T Tab.ModeSuspendedTip}"/>
+                    </MenuItem>
+                    <Separator/>
+                    <MenuItem Header="{loc:T PV.Reload}" Click="OnReloadTabMenu"/>
+                    <MenuItem Header="{loc:T Tab.MenuAutoReload}">
+                      <MenuItem Header="{loc:T Tab.ReloadOff}" Tag="0" Click="OnReloadIntervalMenu"/>
+                      <MenuItem Header="{loc:T Tab.Every1m}" Tag="1" Click="OnReloadIntervalMenu"/>
+                      <MenuItem Header="{loc:T Tab.Every5m}" Tag="5" Click="OnReloadIntervalMenu"/>
+                      <MenuItem Header="{loc:T Tab.Every10m}" Tag="10" Click="OnReloadIntervalMenu"/>
+                      <MenuItem Header="{loc:T Tab.Every15m}" Tag="15" Click="OnReloadIntervalMenu"/>
+                      <MenuItem Header="{loc:T Tab.Every30m}" Tag="30" Click="OnReloadIntervalMenu"/>
+                      <MenuItem Header="{loc:T Tab.Every1h}" Tag="60" Click="OnReloadIntervalMenu"/>
+                      <Separator/>
+                      <MenuItem Header="{loc:T Tab.MenuAutoRecover}" Tag="recover" Click="OnAutoRecoverMenu"
+                                ToolTip="{loc:T Tab.MenuAutoRecoverTip}"/>
+                    </MenuItem>
+                    <Separator/>
+                    <MenuItem Header="{loc:T Tab.MenuMoveLeft}" Tag="move:-1" Click="OnMoveTabLeftMenu"
+                              InputGestureText="Ctrl+Shift+PgUp"/>
+                    <MenuItem Header="{loc:T Tab.MenuMoveRight}" Tag="move:1" Click="OnMoveTabRightMenu"
+                              InputGestureText="Ctrl+Shift+PgDn"/>
+                    <Separator/>
+                    <MenuItem Header="{loc:T Tab.MenuClose}" Click="OnCloseTabMenu"/>
+                  </ContextMenu>
+                </Border.ContextMenu>
+                  <Grid>
+                    <!-- highlight line of the selected tab -->
+                    <Border x:Name="accent" Height="2" VerticalAlignment="Top" Margin="10,0" CornerRadius="0,0,2,2"
+                            Background="{StaticResource Accent}" Visibility="Collapsed"/>
+                    <Grid Margin="12,0,6,0">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                      </Grid.ColumnDefinitions>
+                      <!-- icon: favicon, globe (no favicon) or a spinning indicator (loading) -->
+                      <Grid Width="16" Height="16" Margin="0,0,9,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="globe" Text="&#xE774;" FontFamily="{StaticResource Glyphs}" FontSize="13"
+                                   Foreground="{StaticResource FgDim}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Image x:Name="favicon" Source="{Binding Favicon}"/>
+                        <Ellipse x:Name="spinner" Stroke="{StaticResource Accent}" StrokeThickness="2"
+                                 StrokeDashArray="7 4" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5">
+                          <Ellipse.RenderTransform><RotateTransform/></Ellipse.RenderTransform>
+                        </Ellipse>
+                      </Grid>
+                      <TextBlock x:Name="title" Grid.Column="1" Text="{Binding Title}" Foreground="{StaticResource FgDim}"
+                                 FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                      <Button x:Name="audio" Grid.Column="2" Style="{StaticResource IconButton}" Width="22" Height="22"
+                              FontSize="11" Content="&#xE767;" Visibility="Collapsed" Click="OnAudioButtonClicked"
+                              ToolTip="{loc:T Tab.MuteTip}"/>
+                      <TextBlock x:Name="recovering" Grid.Column="2" Text="&#xE7BA;" FontFamily="{StaticResource Glyphs}" FontSize="11"
+                                 Foreground="{StaticResource Warning}" VerticalAlignment="Center" Margin="4,0,0,0"
+                                 Visibility="Collapsed" ToolTip="{Binding RecoveryStatus}"/>
+                      <TextBlock x:Name="modeIcon" Grid.Column="3" FontFamily="{StaticResource Glyphs}" FontSize="10"
+                                 Foreground="{StaticResource FgDim}" VerticalAlignment="Center" Margin="4,0,0,0"
+                                 Visibility="Collapsed"/>
+                      <TextBlock x:Name="reload" Grid.Column="4" Text="&#xE895;" FontFamily="{StaticResource Glyphs}" FontSize="10"
+                                 Foreground="{StaticResource FgDim}" VerticalAlignment="Center" Margin="4,0,0,0"
+                                 Visibility="Collapsed" ToolTip="{Binding AutoReloadTooltip}"/>
+                      <TextBlock x:Name="pin" Grid.Column="5" Text="&#xE718;" FontFamily="{StaticResource Glyphs}" FontSize="11"
+                                 Foreground="{StaticResource Accent}" VerticalAlignment="Center" Margin="4,0,2,0"
+                                 Visibility="Collapsed" ToolTip="{loc:T Tab.InGridTip}"/>
+                      <!-- close: only shows on the selected tab or with the mouse over it -->
+                      <Button x:Name="close" Grid.Column="6" Style="{StaticResource IconButton}" Width="22" Height="22" FontSize="9"
+                              Content="&#xE711;" ToolTip="{loc:T Tab.CloseTip}" Click="OnCloseTabClicked" Margin="2,0,0,0"
+                              Visibility="Hidden"/>
+                    </Grid>
+                  </Grid>
+                </Border>
+                <!-- separator between unselected tabs -->
+                <Border x:Name="separator" Width="1" Height="16" HorizontalAlignment="Right" VerticalAlignment="Center"
+                        Background="{StaticResource Line}" Margin="0,0,0,2"/>
+              </Grid>
+              <DataTemplate.Triggers>
+                <Trigger SourceName="tab" Property="IsMouseOver" Value="True">
+                  <Setter TargetName="tab" Property="Background" Value="{StaticResource TabHover}"/>
+                  <Setter TargetName="close" Property="Visibility" Value="Visible"/>
+                  <Setter TargetName="title" Property="Foreground" Value="{StaticResource Fg}"/>
+                  <Setter TargetName="separator" Property="Visibility" Value="Hidden"/>
+                </Trigger>
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                  <Setter TargetName="tab" Property="Background" Value="{StaticResource PanelHi}"/>
+                  <Setter TargetName="tab" Property="BorderBrush" Value="{StaticResource Line}"/>
+                  <Setter TargetName="accent" Property="Visibility" Value="Visible"/>
+                  <Setter TargetName="close" Property="Visibility" Value="Visible"/>
+                  <Setter TargetName="title" Property="Foreground" Value="{StaticResource Fg}"/>
+                  <Setter TargetName="separator" Property="Visibility" Value="Hidden"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Favicon}" Value="{x:Null}">
+                  <Setter TargetName="favicon" Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                  <Setter TargetName="spinner" Property="Visibility" Value="Visible"/>
+                  <Setter TargetName="favicon" Property="Visibility" Value="Hidden"/>
+                  <Setter TargetName="globe" Property="Visibility" Value="Hidden"/>
+                  <DataTrigger.EnterActions>
+                    <BeginStoryboard x:Name="spinning">
+                      <Storyboard>
+                        <DoubleAnimation Storyboard.TargetName="spinner"
+                                         Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                         From="0" To="360" Duration="0:0:0.9" RepeatBehavior="Forever"/>
+                      </Storyboard>
+                    </BeginStoryboard>
+                  </DataTrigger.EnterActions>
+                  <DataTrigger.ExitActions>
+                    <StopStoryboard BeginStoryboardName="spinning"/>
+                  </DataTrigger.ExitActions>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                  <Setter TargetName="pin" Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsActiveMode}" Value="True">
+                  <Setter TargetName="modeIcon" Property="Visibility" Value="Visible"/>
+                  <Setter TargetName="modeIcon" Property="Text" Value="&#xE945;"/>
+                  <Setter TargetName="modeIcon" Property="ToolTip" Value="{loc:T Tab.ActiveBadge}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsSuspendedMode}" Value="True">
+                  <Setter TargetName="modeIcon" Property="Visibility" Value="Visible"/>
+                  <Setter TargetName="modeIcon" Property="Text" Value="&#xE708;"/>
+                  <Setter TargetName="modeIcon" Property="ToolTip" Value="{loc:T Tab.SuspendedBadge}"/>
+                  <Setter TargetName="title" Property="Opacity" Value="0.6"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding HasAutoReload}" Value="True">
+                  <Setter TargetName="reload" Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+                <!-- notice while automatic recovery is acting (the speaker gives up its place) -->
+                <DataTrigger Binding="{Binding IsRecovering}" Value="True">
+                  <Setter TargetName="recovering" Property="Visibility" Value="Visible"/>
+                  <Setter TargetName="audio" Property="Visibility" Value="Collapsed"/>
+                  <Setter TargetName="tab" Property="ToolTip" Value="{Binding RecoveryStatus}"/>
+                </DataTrigger>
+                <!-- Speaker: shows when the tab plays audio; struck through (red) when muted -->
+                <DataTrigger Binding="{Binding IsPlayingAudio}" Value="True">
+                  <Setter TargetName="audio" Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding EffectiveMuted}" Value="True">
+                  <Setter TargetName="audio" Property="Visibility" Value="Visible"/>
+                  <Setter TargetName="audio" Property="Content" Value="&#xE74F;"/>
+                  <Setter TargetName="audio" Property="Foreground" Value="{StaticResource Danger}"/>
+                  <Setter TargetName="audio" Property="ToolTip" Value="{loc:T PV.UnmuteTip}"/>
+                </DataTrigger>
+              </DataTemplate.Triggers>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+      <Button Grid.Column="1" Style="{StaticResource IconButton}" Content="&#xE710;" Margin="4,4,8,0"
+              ToolTip="{loc:T Tab.NewTip}" Click="OnNewTabClicked"/>
+    </Grid>
+
+    <!-- ===== Navigation bar ===== -->
+    <Border x:Name="NavRow" Grid.Row="2" Height="44" Background="{StaticResource PanelHi}"
+            BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+      <Grid Margin="6,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <Button x:Name="BackButton" Style="{StaticResource IconButton}" Content="&#xE72B;" ToolTip="{loc:T Nav.Back}" Click="OnBackClicked"/>
+        <Button x:Name="ForwardButton" Grid.Column="1" Style="{StaticResource IconButton}" Content="&#xE72A;" ToolTip="{loc:T Nav.Forward}" Click="OnForwardClicked"/>
+        <Button x:Name="ReloadButton" Grid.Column="2" Style="{StaticResource IconButton}" Content="&#xE72C;" ToolTip="{loc:T Nav.Reload}" Click="OnReloadClicked"/>
+        <Border x:Name="AddressPill" Grid.Column="3" Margin="6,0" Height="30" CornerRadius="15"
+                Background="{StaticResource Bg}" BorderBrush="{StaticResource Line}" BorderThickness="1">
+          <DockPanel Margin="12,0,10,0">
+            <TextBlock x:Name="AddressIcon" DockPanel.Dock="Left" Text="&#xE72E;" FontFamily="{StaticResource Glyphs}"
+                       FontSize="11" Foreground="{StaticResource FgDim}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <TextBox x:Name="AddressBar" Style="{StaticResource BareTextBox}" FontSize="13" VerticalAlignment="Center"
+                     KeyDown="OnAddressKeyDown" GotKeyboardFocus="OnAddressFocused" LostKeyboardFocus="OnAddressBlur"
+                     PreviewMouseLeftButtonDown="OnAddressMouseDown" Tag="{loc:T Nav.AddressHint}"/>
+          </DockPanel>
+        </Border>
+        <Button x:Name="NavZoomButton" Grid.Column="4" Style="{StaticResource IconButton}" Width="Auto" MinWidth="44"
+                FontFamily="{StaticResource Ui}" FontSize="11.5" Content="100%" Visibility="Collapsed" Margin="0,0,4,0"
+                HorizontalAlignment="Right" ToolTip="{loc:T Nav.ZoomTip}" Click="OnZoomResetClicked"/>
+        <Button x:Name="PinTabButton" Grid.Column="6" Style="{StaticResource IconButton}" Content="&#xE718;"
+                ToolTip="{loc:T Tab.MenuPin}" Click="OnPinCurrentTabClicked"/>
+        <Button Grid.Column="7" Style="{StaticResource IconButton}" Content="&#xE7C3;" ToolTip="DevTools (F12)" Click="OnDevToolsClicked"/>
+      </Grid>
+    </Border>
+
+    <!-- ===== Pages: one WebView2 per tab. Those not in view stay "parked" off screen,
+         but remain visible to Chromium, so they are not paused. ===== -->
+    <Grid Grid.Row="3" x:Name="WebHost" Background="{StaticResource Bg}"/>
+    <TextBlock Grid.Row="3" x:Name="StatusText" Foreground="{StaticResource FgDim}" FontSize="14"
+               HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" TextWrapping="Wrap"
+               Margin="40"/>
+  </Grid>
+  </Border>
+</UserControl>

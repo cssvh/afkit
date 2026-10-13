@@ -1,0 +1,150 @@
+<UserControl x:Class="AFKit.Controls.BattleCell"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:AFKit.Services"
+             TextOptions.TextRenderingMode="Grayscale">
+  <!-- V2: one cell of the battle window in the style of the Game Boy Advance battle screens.
+       DataContext = AFKit.Models.TaskbarCell. Fixed 300×170 drawing that scales to any size.
+       Transparent background; only the platforms, sprites and info boxes show. -->
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolVis"/>
+    <FontFamily x:Key="Pixel">pack://application:,,,/Assets/Fonts/#Press Start 2P</FontFamily>
+
+    <!-- info box: cream with a rounded dark border and an offset "shadow" at the bottom/right -->
+    <SolidColorBrush x:Key="BoxFill" Color="#F8F8D8"/>
+    <SolidColorBrush x:Key="BoxLine" Color="#303830"/>
+    <SolidColorBrush x:Key="BoxShadow" Color="#506858"/>
+    <SolidColorBrush x:Key="BoxText" Color="#383830"/>
+    <SolidColorBrush x:Key="BarFrame" Color="#404848"/>
+    <SolidColorBrush x:Key="BarTrack" Color="#687068"/>
+    <SolidColorBrush x:Key="HpLabel" Color="#F8D038"/>
+    <SolidColorBrush x:Key="ExpFill" Color="#40A8F8"/>
+    <SolidColorBrush x:Key="ShinyStar" Color="#F0B800"/>
+
+    <!-- elliptical platform: soft green, semi-transparent, with a slightly darker rim -->
+    <RadialGradientBrush x:Key="PlatformFill">
+      <GradientStop Color="#C0C8E8B0" Offset="0"/>
+      <GradientStop Color="#B0A8D890" Offset="0.7"/>
+      <GradientStop Color="#B090C078" Offset="1"/>
+    </RadialGradientBrush>
+    <SolidColorBrush x:Key="PlatformRim" Color="#C0689850"/>
+
+    <Style x:Key="BoxTextStyle" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="{StaticResource Pixel}"/>
+      <Setter Property="Foreground" Value="{StaticResource BoxText}"/>
+      <Setter Property="FontSize" Value="8"/>
+      <Setter Property="VerticalAlignment" Value="Bottom"/>
+    </Style>
+    <Style x:Key="StarStyle" TargetType="TextBlock">
+      <Setter Property="Text" Value="★"/>
+      <Setter Property="FontFamily" Value="Segoe UI Symbol"/>
+      <Setter Property="FontSize" Value="9"/>
+      <Setter Property="Foreground" Value="{StaticResource ShinyStar}"/>
+      <Setter Property="Margin" Value="2,0,0,-1"/>
+      <Setter Property="VerticalAlignment" Value="Bottom"/>
+    </Style>
+    <Style x:Key="HpStyle" TargetType="TextBlock">
+      <Setter Property="Text" Value="{loc:T Taskbar.HpLabel}"/>
+      <Setter Property="FontFamily" Value="{StaticResource Pixel}"/>
+      <Setter Property="FontSize" Value="5"/>
+      <Setter Property="Foreground" Value="{StaticResource HpLabel}"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+  </UserControl.Resources>
+
+  <Viewbox Stretch="Uniform">
+    <Canvas Width="300" Height="170">
+
+      <!-- ===== Enemy (combat only): platform and sprite top right, box top left ===== -->
+      <Canvas Width="300" Height="170" Visibility="{Binding HasFoe, Converter={StaticResource BoolVis}}">
+        <Ellipse Canvas.Left="168" Canvas.Top="70" Width="116" Height="26"
+                 Fill="{StaticResource PlatformFill}" Stroke="{StaticResource PlatformRim}" StrokeThickness="2"/>
+        <Image Canvas.Left="184" Canvas.Top="0" Width="84" Height="84" Source="{Binding FoeFrame}"
+               RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+        <!-- move effect (from the game itself) over the enemy -->
+        <Image Canvas.Left="180" Canvas.Top="-4" Width="92" Height="92" Source="{Binding EffectFrame}" Stretch="Uniform"
+               RenderOptions.BitmapScalingMode="NearestNeighbor" IsHitTestVisible="False"/>
+
+        <Grid Canvas.Left="4" Canvas.Top="6" Width="150">
+          <Border Margin="3,3,0,0" CornerRadius="7" Background="{StaticResource BoxShadow}"/>
+          <Border Margin="0,0,3,3" CornerRadius="7" Background="{StaticResource BoxFill}"
+                  BorderBrush="{StaticResource BoxLine}" BorderThickness="2" Padding="7,5,7,6">
+            <StackPanel>
+              <DockPanel LastChildFill="False">
+                <TextBlock DockPanel.Dock="Right" Text="{Binding FoeLevel}" Style="{StaticResource BoxTextStyle}" FontSize="7"/>
+                <TextBlock Text="{Binding FoeName}" Style="{StaticResource BoxTextStyle}" MaxWidth="90"
+                           TextTrimming="CharacterEllipsis"/>
+                <TextBlock Style="{StaticResource StarStyle}"
+                           Visibility="{Binding FoeShiny, Converter={StaticResource BoolVis}}"/>
+              </DockPanel>
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,5,0,0">
+                <Border Background="{StaticResource BarFrame}" CornerRadius="2,0,0,2" Padding="2,1,2,1">
+                  <TextBlock Style="{StaticResource HpStyle}"/>
+                </Border>
+                <Border Width="96" Height="7" Background="{StaticResource BarFrame}" CornerRadius="0,3,3,0" Padding="1.5">
+                  <Grid Background="{StaticResource BarTrack}">
+                    <Border Background="{Binding FoeHpBrush}" RenderTransformOrigin="0,0.5">
+                      <Border.RenderTransform>
+                        <ScaleTransform ScaleX="{Binding FoeHp}"/>
+                      </Border.RenderTransform>
+                    </Border>
+                  </Grid>
+                </Border>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </Canvas>
+
+      <!-- ===== Your Pokémon: platform and sprite (back view) bottom left ===== -->
+      <Ellipse Canvas.Left="12" Canvas.Top="134" Width="136" Height="30"
+               Fill="{StaticResource PlatformFill}" Stroke="{StaticResource PlatformRim}" StrokeThickness="2"/>
+      <Image Canvas.Left="32" Canvas.Top="54" Width="96" Height="96" Source="{Binding MeFrame}"
+             RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+
+      <!-- ===== Your box: bottom right (name, level, HP, numbers and EXP) ===== -->
+      <Grid Canvas.Right="4" Canvas.Bottom="4" Width="150">
+        <Border Margin="3,3,0,0" CornerRadius="7" Background="{StaticResource BoxShadow}"/>
+        <Border Margin="0,0,3,3" CornerRadius="7" Background="{StaticResource BoxFill}"
+                BorderBrush="{StaticResource BoxLine}" BorderThickness="2" Padding="7,5,7,5">
+          <StackPanel>
+            <DockPanel LastChildFill="False">
+              <TextBlock DockPanel.Dock="Right" Text="{Binding MeLevel}" Style="{StaticResource BoxTextStyle}" FontSize="7"/>
+              <TextBlock Text="{Binding MeName}" Style="{StaticResource BoxTextStyle}" MaxWidth="90"
+                         TextTrimming="CharacterEllipsis"/>
+              <TextBlock Style="{StaticResource StarStyle}"
+                         Visibility="{Binding MeShiny, Converter={StaticResource BoolVis}}"/>
+            </DockPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,5,0,0">
+              <Border Background="{StaticResource BarFrame}" CornerRadius="2,0,0,2" Padding="2,1,2,1">
+                <TextBlock Style="{StaticResource HpStyle}"/>
+              </Border>
+              <Border Width="96" Height="7" Background="{StaticResource BarFrame}" CornerRadius="0,3,3,0" Padding="1.5">
+                <Grid Background="{StaticResource BarTrack}">
+                  <Border Background="{Binding MeHpBrush}" RenderTransformOrigin="0,0.5">
+                    <Border.RenderTransform>
+                      <ScaleTransform ScaleX="{Binding MeHp}"/>
+                    </Border.RenderTransform>
+                  </Border>
+                </Grid>
+              </Border>
+            </StackPanel>
+            <TextBlock Text="{Binding MeHpText}" Style="{StaticResource BoxTextStyle}" FontSize="7"
+                       HorizontalAlignment="Right" Margin="0,4,0,0"/>
+            <!-- thin EXP bar (only when the game shows the experience) -->
+            <Border Height="4" Margin="0,4,0,0" Background="{StaticResource BarFrame}" CornerRadius="2" Padding="1"
+                    Visibility="{Binding HasExp, Converter={StaticResource BoolVis}}">
+              <Grid Background="{StaticResource BarTrack}">
+                <Border Background="{StaticResource ExpFill}" RenderTransformOrigin="0,0.5">
+                  <Border.RenderTransform>
+                    <ScaleTransform ScaleX="{Binding MeExp}"/>
+                  </Border.RenderTransform>
+                </Border>
+              </Grid>
+            </Border>
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Canvas>
+  </Viewbox>
+</UserControl>

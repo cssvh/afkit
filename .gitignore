@@ -1,0 +1,22 @@
+bin/
+obj/
+publish/
+.vs/
+*.user
+.claude/
+
+# Profile backups hold cookies and logins
+*.afkitprofile
+*.deckprofile
+
+# Signing certificates and secrets
+*.pfx
+*.p12
+*.snk
+.env
+
+# Claude Code local reference
+CLAUDE.md
+
+# README GIF recordings (kept local)
+gifs/
